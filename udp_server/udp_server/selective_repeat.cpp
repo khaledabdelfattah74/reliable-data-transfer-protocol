@@ -22,15 +22,33 @@ void SelectiveRepeat::set_cnwd(int window_size) {
 }
 
 ssize_t SelectiveRepeat::send(packet pckt) {
-//    sender_mtx.lock();
     ssize_t status = 0;
     if (!acks.count(pckt.seqno)) {
         status = send_packet(socket_fd, client_addr, pckt);
-//        timer_monitor(pckt.seqno, true);
-        set_timer(pckt.seqno);
+        timer_monitor(pckt.seqno, true);
     }
-//    sender_mtx.unlock();
     return status;
+}
+
+void SelectiveRepeat::add_packet_to_queue(packet* packet) {
+    sender_mtx.lock();
+    if (state == FAST_RECOVERY)
+        sender_queue.push_front(packet);
+    else
+        sender_queue.push_back(packet);
+    in_queue.insert(packet->seqno);
+    sender_mtx.unlock();
+}
+
+void SelectiveRepeat::sender_function() {
+    while (num_of_acks < packets.size()) {
+        while (!sender_queue.empty()) {
+            packet* pckt = sender_queue.front();
+            sender_queue.pop_front();
+            in_queue.erase(pckt->seqno);
+            send(*pckt);
+        }
+    }
 }
 
 void SelectiveRepeat::process() {
@@ -40,19 +58,25 @@ void SelectiveRepeat::process() {
     thread timer_watch_dog(&SelectiveRepeat::watch_timer, this);
     timer_watch_dog.detach();
     
+    thread sender(&SelectiveRepeat::sender_function, this);
+    sender.detach();
+    
     while (num_of_acks < packets.size()) {
         while (next_seqno < packets.size() + 1 &&
                next_seqno < send_base + window_size) {
             if (!packet_manager.to_be_dropped() || next_seqno == 1)
-                send(*packets[next_seqno - 1]);
+                add_packet_to_queue(packets[next_seqno - 1]);
             else {
+                printf("#### Packet loss: %d\n", next_seqno);
                 timer_monitor(next_seqno, true);
-//                printf("#### Packet loss: %d\n", next_seqno);
-                set_timer(next_seqno);
             }
             next_seqno++;
         }
     }
+//    receiver.join();
+//    timer_watch_dog.join();
+//    sender.join();
+    printf("Terminated because of what??? %d\n", num_of_acks);
 }
 
 void SelectiveRepeat::receive() {
@@ -90,7 +114,8 @@ void SelectiveRepeat::watch_timer() {
     while (num_of_acks < packets.size()) {
         for (int seqno = send_base; seqno < send_base + window_size &&
              seqno < packets.size() + 1; seqno++) {
-            timer_monitor(seqno, false);
+            if (!acks.count(seqno))
+                timer_monitor(seqno, false);
         }
     }
 }
@@ -102,8 +127,8 @@ void SelectiveRepeat::set_timer(u_int32_t seqno) {
 
 void SelectiveRepeat::check_timeout(u_int32_t seqno) {
     if (timers.count(seqno)) {
-        auto elapsed_time = (chrono::high_resolution_clock::now() - timers[seqno]);
-        if (elapsed_time >= timeout_interval && !acks.count(seqno))
+        auto elapsed_time = chrono::duration_cast<std::chrono::milliseconds>(chrono::high_resolution_clock::now() - timers[seqno]).count();
+        if (elapsed_time >= 300 && !acks.count(seqno) && !in_queue.count(seqno))
             handle_timeout(seqno);
     }
 }
@@ -121,9 +146,9 @@ void SelectiveRepeat::timer_monitor(u_int32_t seqno, bool action) {
 void SelectiveRepeat::handle_timeout(u_int32_t seqno) {
     printf("***** Timeout packet: %d\n", seqno);
     ssthresh = max(window_size / 2, 8);
-    window_size = 1;
+    window_size = 128;
     state = SLOW_START;
-    send(*packets[seqno - 1]);
+    add_packet_to_queue(packets[seqno - 1]);
 }
 
 void SelectiveRepeat::update_window_size() {
@@ -150,5 +175,5 @@ void SelectiveRepeat::handle_fast_recovery(u_int32_t ackno) {
     ssthresh = max(window_size / 2, 8);
     window_size = ssthresh + 3;
     state = FAST_RECOVERY;
-    send(*packets[ackno]);
+    add_packet_to_queue(packets[ackno]);
 }

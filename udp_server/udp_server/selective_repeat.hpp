@@ -19,6 +19,8 @@
 #include <thread>
 #include <random>
 #include <chrono>
+#include <deque>
+#include <unordered_set>
 #include "packet.hpp"
 #include "socket_manager.hpp"
 #include "../../headers/timer.hpp"
@@ -57,8 +59,8 @@ private:
     int socket_fd;
     sockaddr_in client_addr;
     vector<packet*> packets;
-    int window_size = 10;
-    int ssthresh = 128;
+    int window_size = 128;
+    int ssthresh = 1024;
     u_int32_t send_base = 1;
     u_int32_t next_seqno = 1;
     unordered_map<u_int32_t, int> acks;
@@ -70,12 +72,16 @@ private:
     enum STATE state = SLOW_START;
     PacketLossManager packet_manager;
     unordered_map<int, chrono::high_resolution_clock::time_point> timers;
+    unordered_set<int> in_queue;
     chrono::milliseconds timeout_interval;
+    deque<packet*> sender_queue;
+    void sender_function();
     void receive();
     void watch_timer();
     void set_timer(u_int32_t);
     void check_timeout(u_int32_t);
     void timer_monitor(u_int32_t, bool);
+    void add_packet_to_queue(packet*);
     void handle_timeout(u_int32_t);
     void update_window_size();
     void handle_fast_recovery(u_int32_t);
