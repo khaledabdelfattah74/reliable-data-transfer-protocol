@@ -12,7 +12,7 @@
 using namespace std;
 
 int main(int argc, const char * argv[]) {
-    Client* client = new Client("/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_client/udp_client/storage/info.txt");
+    Client* client = new Client("/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_client/udp_client/storage/BSCRUM-72.mov");
     client->initiate();
     return 0;
 }

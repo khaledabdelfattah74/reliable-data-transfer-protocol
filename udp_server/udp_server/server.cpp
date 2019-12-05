@@ -55,5 +55,5 @@ void Server::initiate() {
         }
         bzero(buffer, BUFFER_SIZE);
     }
-    printf("Server 5alas\n");
+    printf("Client 5alas\n");
 }

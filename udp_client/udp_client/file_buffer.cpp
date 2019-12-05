@@ -55,7 +55,9 @@ enum BUFFER_STATUS FileBuffer::add_packet(packet packet) {
     } else {
         // No action
     }
-    if (num_of_unordered_packets == 3)
+    if (num_of_unordered_packets == 3) {
+        num_of_unordered_packets = 0;
         return DUP_ACKS;
+    }
     return CONTINUE;
 }

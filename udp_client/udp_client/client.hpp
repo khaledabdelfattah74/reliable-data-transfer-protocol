@@ -27,11 +27,12 @@ using namespace std;
 class Client {
 private:
     int socket_fd;
+    struct sockaddr_in server_addr;
     int port_num=PORT;
     char buffer[BUFFER_SIZE];
     string path;
     FileBuffer* file_buffer;
-    void send_duplicate_acks(u_int32_t, struct sockaddr_in);
+    void send_duplicate_acks(u_int32_t);
     
 public:
     Client(string path, int port_num=PORT);

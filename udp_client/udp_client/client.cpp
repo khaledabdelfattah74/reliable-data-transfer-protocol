@@ -15,7 +15,6 @@ Client::Client(string path, int port_num) {
 }
 
 void Client::initiate() {
-    struct sockaddr_in server_addr;
     socklen_t addr_len = sizeof(server_addr);
     memset(&server_addr, 0, addr_len);
     
@@ -40,7 +39,7 @@ void Client::initiate() {
         packet pckt;
         ssize_t len = ::recvfrom(this->socket_fd, &pckt, sizeof(pckt), MSG_WAITALL,
                    (struct sockaddr *) &server_addr, &addr_len);
-        printf("data: %s\nfin: %d\n", pckt.data, pckt.fin);
+        printf("data: %d\nfin: %d\n", pckt.seqno, pckt.fin);
 
         if (len < 0)
             continue;
@@ -54,14 +53,14 @@ void Client::initiate() {
         if (buffer_status == FINISH)
             break;
         else if (buffer_status == DUP_ACKS)
-            send_duplicate_acks(file_buffer->get_next_seqno(), server_addr);
+            send_duplicate_acks(file_buffer->get_next_seqno());
     }
     close(socket_fd);
 }
 
-void Client::send_duplicate_acks(u_int32_t seqno, struct sockaddr_in server_addr) {
+void Client::send_duplicate_acks(u_int32_t seqno) {
     socklen_t addr_len = sizeof(server_addr);
-    ack_packet ack = *make_ack_packet(seqno);
+    ack_packet ack = *make_ack_packet(seqno - 1);
     for (int i = 0; i < 3; i++)
         ::sendto(this->socket_fd, &ack, sizeof(ack), MSG_CONFIRM,
                  (const struct sockaddr *) &server_addr, addr_len);

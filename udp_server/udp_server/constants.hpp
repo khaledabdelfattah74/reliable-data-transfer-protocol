@@ -11,7 +11,7 @@
 #define constants_hpp
 
 #define BUFFER_SIZE 512
-#define PORT 7001
+#define PORT 2202
 #define MSG_CONFIRM 0
 #define PACKET_SIZE 500
 

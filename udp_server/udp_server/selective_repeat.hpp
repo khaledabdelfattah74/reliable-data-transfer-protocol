@@ -17,11 +17,40 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <thread>
+#include <random>
+#include <chrono>
 #include "packet.hpp"
 #include "socket_manager.hpp"
 #include "../../headers/timer.hpp"
 
 using namespace std;
+
+enum STATE {
+    SLOW_START,
+    CONGESTION_AVOIDANCE,
+    FAST_RECOVERY
+};
+
+class PacketLossManager {
+    double plp;
+    double seed;
+    default_random_engine engine;
+    uniform_real_distribution<> distribution;
+    
+public:
+    PacketLossManager() {}
+    
+    PacketLossManager(double plp, double seed) {
+        this->plp = plp;
+        this->seed = seed;
+        this->engine = default_random_engine((int) time(0));
+        this->distribution = uniform_real_distribution<>(0.0f, 1.0f);
+    }
+    
+    bool to_be_dropped() {
+        return (distribution(engine) <= plp);
+    }
+};
 
 class SelectiveRepeat {
 private:
@@ -29,6 +58,7 @@ private:
     sockaddr_in client_addr;
     vector<packet*> packets;
     int window_size = 10;
+    int ssthresh = 128;
     u_int32_t send_base = 1;
     u_int32_t next_seqno = 1;
     unordered_map<u_int32_t, int> acks;
@@ -37,12 +67,21 @@ private:
     u_int32_t num_of_acks = 0;
     Timer timer;
     ssize_t send(packet);
+    enum STATE state = SLOW_START;
+    PacketLossManager packet_manager;
+    unordered_map<int, chrono::high_resolution_clock::time_point> timers;
+    chrono::milliseconds timeout_interval;
     void receive();
-    void set_timer();
+    void watch_timer();
+    void set_timer(u_int32_t);
+    void check_timeout(u_int32_t);
+    void timer_monitor(u_int32_t, bool);
     void handle_timeout(u_int32_t);
+    void update_window_size();
+    void handle_fast_recovery(u_int32_t);
     
 public:
-    SelectiveRepeat(int, sockaddr_in, vector<packet*>);
+    SelectiveRepeat(int, sockaddr_in, vector<packet*>, double, double);
     void set_cnwd(int);
     void process();
 };

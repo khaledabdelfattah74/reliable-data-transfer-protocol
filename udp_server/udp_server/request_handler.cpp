@@ -32,7 +32,7 @@ void RequestHandler::handle(enum PROTOCOL protocol) {
     }
     
     // TODO Add protocols
-    string path = "/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_server/udp_server/public/info.txt";
+    string path = "/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_server/udp_server/public/BSCRUM-72.mov";
     FileHandler* handler = new FileHandler(path);
     if (handler->open_file()) {
         vector<packet*> packts = handler->get_chunks();
@@ -42,8 +42,9 @@ void RequestHandler::handle(enum PROTOCOL protocol) {
 //            StopAndWait* processor = new StopAndWait(req_sock_fd, client_addr, packts);
 //            processor->process();
         } else if (protocol == SELECTIVE_REPEAT) {
-            SelectiveRepeat* processor = new SelectiveRepeat(req_sock_fd, client_addr, packts);
+            SelectiveRepeat* processor = new SelectiveRepeat(req_sock_fd, client_addr, packts, 0.1, 128);
             processor->process();
         }
     }
+    close(req_sock_fd);
 }
