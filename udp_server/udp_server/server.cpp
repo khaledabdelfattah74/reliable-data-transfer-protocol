@@ -37,12 +37,23 @@ void Server::initiate() {
         exit(EXIT_FAILURE);
     }
     
-    // TODO fork process for each client
-    ::recvfrom(this->socket_fd, (char *) this->buffer, BUFFER_SIZE, MSG_WAITALL,
-             (struct sockaddr *) &client_addr, &addr_len);
-    printf("Client msg: %s\n", buffer);
-    char msg[] = "Hello from server\n";
-    ::sendto(this->socket_fd, (char *) msg, strlen(msg), MSG_CONFIRM,
-             (const struct sockaddr *) &client_addr, addr_len);
+    int pid = getpid();
+    socklen_t client_len = sizeof(client_addr);
+    
+    while (pid) {
+        ssize_t len = ::recvfrom(this->socket_fd, (char *) this->buffer, BUFFER_SIZE, MSG_WAITALL,
+                   (struct sockaddr *) &client_addr, &client_len);
+        printf("Client msg: %s, length: %zd\n", buffer, len);
+        
+        if (len < 0)
+            continue;
+        
+        pid = fork();
+        if (pid == 0) {
+            RequestHandler* request_handler = new RequestHandler({}, client_addr);
+            request_handler->handle();
+        }
+        bzero(buffer, BUFFER_SIZE);
+    }
     printf("Server 5alas\n");
 }

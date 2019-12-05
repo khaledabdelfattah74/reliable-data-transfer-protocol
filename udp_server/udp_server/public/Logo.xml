@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<java version="1.8.0_121" class="java.beans.XMLDecoder">
+ <object class="java.util.ArrayList">
+  <void method="add">
+   <object class="java.util.HashMap">
+    <void method="put">
+     <string>borderWidth</string>
+     <double>10.0</double>
+    </void>
+    <void method="put">
+     <string>y1</string>
+     <double>98.0</double>
+    </void>
+    <void method="put">
+     <string>x1</string>
+     <double>197.0</double>
+    </void>
+    <void method="put">
+     <string>y2</string>
+     <double>246.0</double>
+    </void>
+    <void method="put">
+     <string>x2</string>
+     <double>486.0</double>
+    </void>
+    <void method="put">
+     <string>y3</string>
+     <double>349.0</double>
+    </void>
+    <void method="put">
+     <string>x3</string>
+     <double>147.0</double>
+    </void>
+   </object>
+  </void>
+  <void method="add">
+   <object class="java.util.HashMap">
+    <void method="put">
+     <string>borderWidth</string>
+     <double>30.0</double>
+    </void>
+    <void method="put">
+     <string>y1</string>
+     <double>41.0</double>
+    </void>
+    <void method="put">
+     <string>x1</string>
+     <double>314.0</double>
+    </void>
+    <void method="put">
+     <string>y2</string>
+     <double>95.0</double>
+    </void>
+    <void method="put">
+     <string>x2</string>
+     <double>506.0</double>
+    </void>
+    <void method="put">
+     <string>y3</string>
+     <double>352.0</double>
+    </void>
+    <void method="put">
+     <string>x3</string>
+     <double>143.0</double>
+    </void>
+   </object>
+  </void>
+ </object>
+ <object class="java.util.ArrayList">
+  <void method="add">
+   <string>&lt;perColorG&gt;0.12941177189350128&lt;/perColorG&gt;&lt;shapeType&gt;Triangle&lt;/shapeType&gt;&lt;fillColorOpacity&gt;1.0&lt;/fillColorOpacity&gt;&lt;fillColorR&gt;1.0&lt;/fillColorR&gt;&lt;fillColorB&gt;1.0&lt;/fillColorB&gt;&lt;perColorOpacity&gt;1.0&lt;/perColorOpacity&gt;&lt;perColorR&gt;0.12941177189350128&lt;/perColorR&gt;&lt;perColorB&gt;0.12941177189350128&lt;/perColorB&gt;&lt;fillColorG&gt;1.0&lt;/fillColorG&gt;</string>
+  </void>
+  <void method="add">
+   <string>&lt;perColorG&gt;0.12941177189350128&lt;/perColorG&gt;&lt;shapeType&gt;Triangle&lt;/shapeType&gt;&lt;fillColorOpacity&gt;1.0&lt;/fillColorOpacity&gt;&lt;fillColorR&gt;1.0&lt;/fillColorR&gt;&lt;fillColorB&gt;1.0&lt;/fillColorB&gt;&lt;perColorOpacity&gt;1.0&lt;/perColorOpacity&gt;&lt;perColorR&gt;0.12941177189350128&lt;/perColorR&gt;&lt;perColorB&gt;0.12941177189350128&lt;/perColorB&gt;&lt;fillColorG&gt;1.0&lt;/fillColorG&gt;</string>
+  </void>
+ </object>
+</java>

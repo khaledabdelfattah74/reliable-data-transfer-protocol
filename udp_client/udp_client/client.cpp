@@ -8,8 +8,10 @@
 
 #include "client.hpp"
 
-Client::Client(int port_num) {
+Client::Client(string path, int port_num) {
     this->port_num = port_num;
+    this->path = path;
+    file_buffer = new FileBuffer(path);
 }
 
 void Client::initiate() {
@@ -32,7 +34,35 @@ void Client::initiate() {
     ::sendto(this->socket_fd, (char *) msg, strlen(msg), MSG_CONFIRM,
              (const struct sockaddr *) &server_addr, addr_len);
     printf("Client ba3at\n");
-    ::recvfrom(this->socket_fd, (char *) this->buffer, BUFFER_SIZE, MSG_WAITALL,
-               (struct sockaddr *) &server_addr, &addr_len);
-    printf("Server msg: %s\n", buffer);
+    
+    file_buffer->set_next_seqno(1);
+    while (true) {
+        packet pckt;
+        ssize_t len = ::recvfrom(this->socket_fd, &pckt, sizeof(pckt), MSG_WAITALL,
+                   (struct sockaddr *) &server_addr, &addr_len);
+        printf("data: %s\nfin: %d\n", pckt.data, pckt.fin);
+
+        if (len < 0)
+            continue;
+        
+        ack_packet ack = *make_ack_packet(pckt.seqno);
+        ::sendto(this->socket_fd, &ack, sizeof(ack), MSG_CONFIRM,
+                 (const struct sockaddr *) &server_addr, addr_len);
+        
+        enum BUFFER_STATUS buffer_status = file_buffer->add_packet(pckt);
+        
+        if (buffer_status == FINISH)
+            break;
+        else if (buffer_status == DUP_ACKS)
+            send_duplicate_acks(file_buffer->get_next_seqno(), server_addr);
+    }
+    close(socket_fd);
+}
+
+void Client::send_duplicate_acks(u_int32_t seqno, struct sockaddr_in server_addr) {
+    socklen_t addr_len = sizeof(server_addr);
+    ack_packet ack = *make_ack_packet(seqno);
+    for (int i = 0; i < 3; i++)
+        ::sendto(this->socket_fd, &ack, sizeof(ack), MSG_CONFIRM,
+                 (const struct sockaddr *) &server_addr, addr_len);
 }

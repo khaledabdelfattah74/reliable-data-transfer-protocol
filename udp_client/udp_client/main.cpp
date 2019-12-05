@@ -12,7 +12,7 @@
 using namespace std;
 
 int main(int argc, const char * argv[]) {
-    Client* client = new Client();
+    Client* client = new Client("/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_client/udp_client/storage/info.txt");
     client->initiate();
     return 0;
 }

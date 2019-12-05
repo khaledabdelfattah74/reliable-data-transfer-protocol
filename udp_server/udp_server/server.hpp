@@ -19,6 +19,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include "constants.hpp"
+#include "request_handler.hpp"
 
 using namespace std;
 

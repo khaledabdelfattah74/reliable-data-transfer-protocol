@@ -18,7 +18,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include "file_buffer.hpp"
 #include "../../udp_server/udp_server/constants.hpp"
+#include "../../udp_server/udp_server/packet.hpp"
 
 using namespace std;
 
@@ -27,9 +29,12 @@ private:
     int socket_fd;
     int port_num=PORT;
     char buffer[BUFFER_SIZE];
+    string path;
+    FileBuffer* file_buffer;
+    void send_duplicate_acks(u_int32_t, struct sockaddr_in);
     
 public:
-    Client(int port_num=PORT);
+    Client(string path, int port_num=PORT);
     void initiate();
 };
 
