@@ -15,18 +15,25 @@ SelectiveRepeat::SelectiveRepeat(int socket_fd, sockaddr_in client_addr, vector<
     this->packets = packets;
     this->packet_manager = PacketLossManager(plp, seed);
     this->timeout_interval = chrono::milliseconds(300);
+    set_socket_timeout(socket_fd, 0, 500);
 }
 
-void SelectiveRepeat::set_cnwd(int window_size) {
+void SelectiveRepeat::update_congestion_attr(int window_size, int ssthresh, enum STATE state) {
+    congestion_mtx.lock();
     this->window_size = window_size;
+    this->ssthresh = ssthresh;
+    this->state = state;
+    congestion_mtx.unlock();
 }
 
 ssize_t SelectiveRepeat::send(packet pckt) {
+    sender_mtx.lock();
     ssize_t status = 0;
-    if (!acks.count(pckt.seqno)) {
+//    if (!acks.count(pckt.seqno)) {
         status = send_packet(socket_fd, client_addr, pckt);
-        timer_monitor(pckt.seqno, true);
-    }
+//        set_timer(pckt.seqno);
+//    }
+    sender_mtx.unlock();
     return status;
 }
 
@@ -36,7 +43,7 @@ void SelectiveRepeat::add_packet_to_queue(packet* packet) {
         sender_queue.push_front(packet);
     else
         sender_queue.push_back(packet);
-    in_queue.insert(packet->seqno);
+//    in_queue.insert(packet->seqno);
     sender_mtx.unlock();
 }
 
@@ -44,9 +51,9 @@ void SelectiveRepeat::sender_function() {
     while (num_of_acks < packets.size()) {
         while (!sender_queue.empty()) {
             packet* pckt = sender_queue.front();
-            sender_queue.pop_front();
-            in_queue.erase(pckt->seqno);
             send(*pckt);
+            sender_queue.pop_front();
+//            in_queue.erase(pckt->seqno);
         }
     }
 }
@@ -58,24 +65,21 @@ void SelectiveRepeat::process() {
     thread timer_watch_dog(&SelectiveRepeat::watch_timer, this);
     timer_watch_dog.detach();
     
-    thread sender(&SelectiveRepeat::sender_function, this);
-    sender.detach();
+//    thread sender(&SelectiveRepeat::sender_function, this);
+//    sender.detach();
     
     while (num_of_acks < packets.size()) {
         while (next_seqno < packets.size() + 1 &&
                next_seqno < send_base + window_size) {
             if (!packet_manager.to_be_dropped() || next_seqno == 1)
-                add_packet_to_queue(packets[next_seqno - 1]);
+                send(*packets[next_seqno - 1]);
             else {
                 printf("#### Packet loss: %d\n", next_seqno);
-                timer_monitor(next_seqno, true);
             }
+            timer_monitor(next_seqno, true);
             next_seqno++;
         }
     }
-//    receiver.join();
-//    timer_watch_dog.join();
-//    sender.join();
     printf("Terminated because of what??? %d\n", num_of_acks);
 }
 
@@ -88,7 +92,7 @@ void SelectiveRepeat::receive() {
         if (len < 0)
             continue;
         printf("Recived ackno: %d\n", ack.ackno);
-
+        timer_monitor(ack.ackno, 2);
         // New Ack
         if (!acks.count(ack.ackno)) {
             acks[ack.ackno] = 1;
@@ -114,7 +118,7 @@ void SelectiveRepeat::watch_timer() {
     while (num_of_acks < packets.size()) {
         for (int seqno = send_base; seqno < send_base + window_size &&
              seqno < packets.size() + 1; seqno++) {
-            if (!acks.count(seqno))
+//            if (acks.count(seqno) <= 0)
                 timer_monitor(seqno, false);
         }
     }
@@ -128,15 +132,18 @@ void SelectiveRepeat::set_timer(u_int32_t seqno) {
 void SelectiveRepeat::check_timeout(u_int32_t seqno) {
     if (timers.count(seqno)) {
         auto elapsed_time = chrono::duration_cast<std::chrono::milliseconds>(chrono::high_resolution_clock::now() - timers[seqno]).count();
-        if (elapsed_time >= 300 && !acks.count(seqno) && !in_queue.count(seqno))
+        if (elapsed_time >= 300)
             handle_timeout(seqno);
     }
 }
 
-void SelectiveRepeat::timer_monitor(u_int32_t seqno, bool action) {
+void SelectiveRepeat::timer_monitor(u_int32_t seqno, int action) {
     timer_mtx.lock();
-    if (action) {
+    if (action == 1) {
         set_timer(seqno);
+    } else if (action == 2) {
+        if (timers.count(seqno))
+            timers.erase(seqno);
     } else {
         check_timeout(seqno);
     }
@@ -145,35 +152,41 @@ void SelectiveRepeat::timer_monitor(u_int32_t seqno, bool action) {
 
 void SelectiveRepeat::handle_timeout(u_int32_t seqno) {
     printf("***** Timeout packet: %d\n", seqno);
-    ssthresh = max(window_size / 2, 8);
-    window_size = 128;
-    state = SLOW_START;
-    add_packet_to_queue(packets[seqno - 1]);
+    int new_ssthresh = max(window_size / 2, 8);
+    int new_window_size = 1;
+    enum STATE new_state = SLOW_START;
+    update_congestion_attr(new_window_size, new_ssthresh, new_state);
+    send(*packets[seqno - 1]);
+    set_timer(seqno);
 }
 
 void SelectiveRepeat::update_window_size() {
+    enum STATE new_state = state;
+    int new_window_size = window_size;
     switch (state) {
         case SLOW_START:
-            window_size *= 2;
-            if (window_size >= ssthresh)
-                state = CONGESTION_AVOIDANCE;
+            new_window_size = window_size * 2;
+            if (new_window_size >= ssthresh)
+                new_state = CONGESTION_AVOIDANCE;
             break;
         case CONGESTION_AVOIDANCE:
-            window_size++;
+            new_window_size = window_size + 1;
             break;
         case FAST_RECOVERY:
-            window_size = ssthresh;
-            state = CONGESTION_AVOIDANCE;
+            new_window_size = ssthresh;
+            new_state = CONGESTION_AVOIDANCE;
             break;
         default:
             break;
     }
+    update_congestion_attr(new_window_size, ssthresh, new_state);
 }
 
 void SelectiveRepeat::handle_fast_recovery(u_int32_t ackno) {
     printf("****** Entering fast recovery state: %d\n", ackno);
-    ssthresh = max(window_size / 2, 8);
-    window_size = ssthresh + 3;
-    state = FAST_RECOVERY;
-    add_packet_to_queue(packets[ackno]);
+    int new_ssthresh = max(window_size / 2, 8);
+    int new_window_size = new_ssthresh + 3;
+    update_congestion_attr(new_window_size, new_ssthresh, FAST_RECOVERY);
+    send(*packets[ackno]);
+    timer_monitor(next_seqno, 1);
 }

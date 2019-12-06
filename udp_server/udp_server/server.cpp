@@ -37,7 +37,7 @@ void Server::initiate() {
         exit(EXIT_FAILURE);
     }
     
-    int pid = getpid();
+    pid_t pid = getpid();
     socklen_t client_len = sizeof(client_addr);
     
     while (pid) {
@@ -48,11 +48,11 @@ void Server::initiate() {
         if (len < 0)
             continue;
         
-        pid = fork();
-        if (pid == 0) {
+//        pid = fork();
+//        if (pid == 0) {
             RequestHandler* request_handler = new RequestHandler({}, client_addr);
             request_handler->handle();
-        }
+//        }
         bzero(buffer, BUFFER_SIZE);
     }
     printf("Client 5alas\n");

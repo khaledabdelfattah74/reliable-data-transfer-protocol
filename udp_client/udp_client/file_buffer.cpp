@@ -48,21 +48,15 @@ enum BUFFER_STATUS FileBuffer::add_packet(packet packet) {
             write_packet(cur_packet);
             next_seqno++;
         }
-        num_of_unordered_packets = 0;
     } else if (packet.seqno > next_seqno) {
         packets[packet.seqno] = packet;
         num_of_unordered_packets++;
-    } else {
-        return CONTINUE;
-    }
-//    if (num_of_unordered_packets == 3) {
         bool dup_ack = true;
         for (int i = 1; i <= 3; i++)
             dup_ack &= has_packet(next_seqno + i);
-        num_of_unordered_packets = 0;
-    if (dup_ack) {
-        return DUP_ACKS;
+        if (dup_ack) {
+            return DUP_ACKS;
+        }
     }
-//    }
     return CONTINUE;
 }

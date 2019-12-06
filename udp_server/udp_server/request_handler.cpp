@@ -42,7 +42,7 @@ void RequestHandler::handle(enum PROTOCOL protocol) {
 //            StopAndWait* processor = new StopAndWait(req_sock_fd, client_addr, packts);
 //            processor->process();
         } else if (protocol == SELECTIVE_REPEAT) {
-            SelectiveRepeat* processor = new SelectiveRepeat(req_sock_fd, client_addr, packts, 0.1, 128);
+            SelectiveRepeat* processor = new SelectiveRepeat(req_sock_fd, client_addr, packts, 0.05, 128);
             processor->process();
         }
     }
