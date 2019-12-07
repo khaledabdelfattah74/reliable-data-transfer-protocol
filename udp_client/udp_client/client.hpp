@@ -21,6 +21,7 @@
 #include "file_buffer.hpp"
 #include "../../udp_server/udp_server/constants.hpp"
 #include "../../udp_server/udp_server/packet.hpp"
+#include "../../udp_server/udp_server/socket_manager.hpp"
 
 using namespace std;
 
@@ -32,10 +33,11 @@ private:
     char buffer[BUFFER_SIZE];
     string path;
     FileBuffer* file_buffer;
+    bool send_request_packet();
     void send_duplicate_acks(u_int32_t);
     
 public:
-    Client(string path, int port_num=PORT);
+    Client(string path, string server_ip="localhost", int port_num=PORT);
     void initiate();
 };
 

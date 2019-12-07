@@ -9,7 +9,7 @@
 #include "selective_repeat.hpp"
 
 SelectiveRepeat::SelectiveRepeat(int socket_fd, sockaddr_in client_addr, vector<packet*> packets,
-                                 double plp, double seed) {
+                                 double seed, double plp) {
     this->socket_fd = socket_fd;
     this->client_addr = client_addr;
     this->packets = packets;
@@ -23,16 +23,16 @@ void SelectiveRepeat::update_congestion_attr(int window_size, int ssthresh, enum
     this->window_size = window_size;
     this->ssthresh = ssthresh;
     this->state = state;
+    trans_round++;
+    string tuple = to_string(trans_round) + ", " + to_string(window_size) + "\n";
+    file.write(tuple.c_str(), tuple.length());
     congestion_mtx.unlock();
 }
 
 ssize_t SelectiveRepeat::send(packet pckt) {
     sender_mtx.lock();
     ssize_t status = 0;
-//    if (!acks.count(pckt.seqno)) {
-        status = send_packet(socket_fd, client_addr, pckt);
-//        set_timer(pckt.seqno);
-//    }
+    status = send_packet(socket_fd, client_addr, pckt);
     sender_mtx.unlock();
     return status;
 }
@@ -68,6 +68,14 @@ void SelectiveRepeat::process() {
 //    thread sender(&SelectiveRepeat::sender_function, this);
 //    sender.detach();
     
+    string path = "/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_server/udp_server/con-control-graph.csv";
+    file.open(path, ios::out | ios::binary);
+    string headers = "Transimission Round, Congestion window\n";
+    file.write(headers.c_str(), headers.length());
+    string tuple = to_string(trans_round) + ", " + to_string(window_size) + "\n";
+    file.write(tuple.c_str(), tuple.length());
+
+    
     while (num_of_acks < packets.size()) {
         while (next_seqno < packets.size() + 1 &&
                next_seqno < send_base + window_size) {
@@ -81,6 +89,7 @@ void SelectiveRepeat::process() {
         }
     }
     printf("Terminated because of what??? %d\n", num_of_acks);
+    file.close();
 }
 
 void SelectiveRepeat::receive() {
@@ -92,6 +101,7 @@ void SelectiveRepeat::receive() {
         if (len < 0)
             continue;
         printf("Recived ackno: %d\n", ack.ackno);
+        // Erase timer for packet with ackno = ack.ackno
         timer_monitor(ack.ackno, 2);
         // New Ack
         if (!acks.count(ack.ackno)) {
@@ -118,7 +128,6 @@ void SelectiveRepeat::watch_timer() {
     while (num_of_acks < packets.size()) {
         for (int seqno = send_base; seqno < send_base + window_size &&
              seqno < packets.size() + 1; seqno++) {
-//            if (acks.count(seqno) <= 0)
                 timer_monitor(seqno, false);
         }
     }

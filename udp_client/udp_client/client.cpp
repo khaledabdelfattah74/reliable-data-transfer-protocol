@@ -8,10 +8,11 @@
 
 #include "client.hpp"
 
-Client::Client(string path, int port_num) {
+Client::Client(string path, string ip_address, int port_num) {
     this->port_num = port_num;
     this->path = path;
-    file_buffer = new FileBuffer(path);
+    string root_path = "/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_client/udp_client/storage/";
+    file_buffer = new FileBuffer(root_path + path);
 }
 
 void Client::initiate() {
@@ -29,17 +30,17 @@ void Client::initiate() {
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = this->port_num;
     
-    char msg[] = "Hello from client\n";
-    ::sendto(this->socket_fd, (char *) msg, strlen(msg), MSG_CONFIRM,
-             (const struct sockaddr *) &server_addr, addr_len);
-    printf("Client ba3at\n");
+//    set_socket_timeout(socket_fd, 0, 500);
+    
+    send_request_packet();
+    printf("Client has just sent a request\n");
     
     file_buffer->set_next_seqno(1);
     while (true) {
         packet pckt;
         ssize_t len = ::recvfrom(this->socket_fd, &pckt, sizeof(pckt), MSG_WAITALL,
                    (struct sockaddr *) &server_addr, &addr_len);
-        printf("data: %d\nfin: %d\n", pckt.seqno, pckt.fin);
+        printf("seqno: %d, fin: %d\n", pckt.seqno, pckt.fin);
 
         if (len < 0)
             continue;
@@ -56,6 +57,25 @@ void Client::initiate() {
             send_duplicate_acks(file_buffer->get_next_seqno());
     }
     close(socket_fd);
+}
+
+bool Client::send_request_packet() {
+    char path_data[path.length()];
+    path.copy(path_data, path.length());
+    socklen_t addr_len = sizeof(server_addr);
+    
+    packet request_pckt = *make_packet(path_data, (u_int32_t) path.length(), 0);
+    while (true) {
+        send_packet(socket_fd, server_addr, request_pckt);
+        // Receive ack
+        ack_packet ack;
+        ssize_t len = ::recvfrom(socket_fd, &ack, sizeof(ack), MSG_WAITALL,
+                                 (struct sockaddr *) &server_addr, &addr_len);
+        printf("ackno: %d\n", ack.ackno);
+        if (len > 0 && ack.ackno == 0)
+            break;
+    }
+    return true;
 }
 
 void Client::send_duplicate_acks(u_int32_t seqno) {

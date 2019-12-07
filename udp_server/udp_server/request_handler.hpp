@@ -31,9 +31,11 @@ private:
     packet request;
     sockaddr_in client_addr;
     sockaddr_in req_addr;
+    double seed;
+    double plp;
     
 public:
-    RequestHandler(packet, sockaddr_in);
+    RequestHandler(packet, sockaddr_in, double, double);
     void handle(enum PROTOCOL protocol=SELECTIVE_REPEAT);
 };
 

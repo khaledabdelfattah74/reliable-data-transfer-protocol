@@ -24,6 +24,7 @@
 #include "packet.hpp"
 #include "socket_manager.hpp"
 #include "../../headers/timer.hpp"
+#include <fstream>
 
 using namespace std;
 
@@ -87,6 +88,8 @@ private:
     void update_window_size();
     void handle_fast_recovery(u_int32_t);
     void update_congestion_attr(int, int, enum STATE);
+    ofstream file;
+    long long trans_round = 1;
     
 public:
     SelectiveRepeat(int, sockaddr_in, vector<packet*>, double, double);

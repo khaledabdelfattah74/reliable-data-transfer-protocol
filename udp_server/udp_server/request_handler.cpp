@@ -8,9 +8,11 @@
 
 #include "request_handler.hpp"
 
-RequestHandler::RequestHandler(packet request, sockaddr_in client_addr) {
+RequestHandler::RequestHandler(packet request, sockaddr_in client_addr, double seed, double plp) {
     this->request = request;
     this->client_addr = client_addr;
+    this->seed = seed;
+    this->plp = plp;
 }
 
 void RequestHandler::handle(enum PROTOCOL protocol) {
@@ -31,9 +33,12 @@ void RequestHandler::handle(enum PROTOCOL protocol) {
         exit(EXIT_FAILURE);
     }
     
-    // TODO Add protocols
-    string path = "/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_server/udp_server/public/BSCRUM-72.mov";
-    FileHandler* handler = new FileHandler(path);
+    string root_path = "/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_server/udp_server/public/";
+    string path = "";
+    for (int i = 0; i < request.len; i++)
+        path += request.data[i];
+    
+    FileHandler* handler = new FileHandler(root_path + path);
     if (handler->open_file()) {
         vector<packet*> packts = handler->get_chunks();
         printf("packets #: %d\n", (int) packts.size());
@@ -42,7 +47,7 @@ void RequestHandler::handle(enum PROTOCOL protocol) {
 //            StopAndWait* processor = new StopAndWait(req_sock_fd, client_addr, packts);
 //            processor->process();
         } else if (protocol == SELECTIVE_REPEAT) {
-            SelectiveRepeat* processor = new SelectiveRepeat(req_sock_fd, client_addr, packts, 0.05, 128);
+            SelectiveRepeat* processor = new SelectiveRepeat(req_sock_fd, client_addr, packts, seed, plp);
             processor->process();
         }
     }

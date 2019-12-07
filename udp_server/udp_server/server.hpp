@@ -27,11 +27,13 @@ class Server {
 private:
     int socket_fd;
     int port_num=PORT;
+    double seed;
+    double plp;
     enum PROTOCOL protocol;
     char buffer[BUFFER_SIZE];
     
 public:
-    Server(int port_num=PORT, enum PROTOCOL protocol=STOP_AND_WAIT);
+    Server(int port_num=PORT, double seed=12312, double plp=0.1, enum PROTOCOL protocol=STOP_AND_WAIT);
     void initiate();
 };
 
