@@ -13,8 +13,7 @@ SelectiveRepeat::SelectiveRepeat(int socket_fd, sockaddr_in client_addr, vector<
     this->socket_fd = socket_fd;
     this->client_addr = client_addr;
     this->packets = packets;
-    this->packet_manager = PacketLossManager(plp, seed);
-    this->timeout_interval = chrono::milliseconds(300);
+    this->packet_manager = PacketLossSimulator(plp, seed);
     set_socket_timeout(socket_fd, 0, 500);
 }
 
@@ -23,6 +22,7 @@ void SelectiveRepeat::update_congestion_attr(int window_size, int ssthresh, enum
     this->window_size = window_size;
     this->ssthresh = ssthresh;
     this->state = state;
+    
     trans_round++;
     string tuple = to_string(trans_round) + ", " + to_string(window_size) + "\n";
     file.write(tuple.c_str(), tuple.length());
@@ -37,36 +37,12 @@ ssize_t SelectiveRepeat::send(packet pckt) {
     return status;
 }
 
-void SelectiveRepeat::add_packet_to_queue(packet* packet) {
-    sender_mtx.lock();
-    if (state == FAST_RECOVERY)
-        sender_queue.push_front(packet);
-    else
-        sender_queue.push_back(packet);
-//    in_queue.insert(packet->seqno);
-    sender_mtx.unlock();
-}
-
-void SelectiveRepeat::sender_function() {
-    while (num_of_acks < packets.size()) {
-        while (!sender_queue.empty()) {
-            packet* pckt = sender_queue.front();
-            send(*pckt);
-            sender_queue.pop_front();
-//            in_queue.erase(pckt->seqno);
-        }
-    }
-}
-
 void SelectiveRepeat::process() {
     thread receiver(&SelectiveRepeat::receive, this);
     receiver.detach();
     
     thread timer_watch_dog(&SelectiveRepeat::watch_timer, this);
     timer_watch_dog.detach();
-    
-//    thread sender(&SelectiveRepeat::sender_function, this);
-//    sender.detach();
     
     string path = "/Users/khaledabdelfattah/Documents/workspace/networks/reliable-data-transport-protocol/udp_server/udp_server/con-control-graph.csv";
     file.open(path, ios::out | ios::binary);
@@ -84,11 +60,12 @@ void SelectiveRepeat::process() {
             else {
                 printf("#### Packet loss: %d\n", next_seqno);
             }
-            timer_monitor(next_seqno, true);
+            timer_monitor(next_seqno, SET_TIMER);
             next_seqno++;
         }
     }
-    printf("Terminated because of what??? %d\n", num_of_acks);
+    printf("Terminated with number of packets: %d\n", num_of_acks);
+    
     file.close();
 }
 
@@ -102,7 +79,7 @@ void SelectiveRepeat::receive() {
             continue;
         printf("Recived ackno: %d\n", ack.ackno);
         // Erase timer for packet with ackno = ack.ackno
-        timer_monitor(ack.ackno, 2);
+        timer_monitor(ack.ackno, REMOVE_TIMER);
         // New Ack
         if (!acks.count(ack.ackno)) {
             acks[ack.ackno] = 1;
@@ -116,7 +93,7 @@ void SelectiveRepeat::receive() {
                 acks[ack.ackno] = 1;
             }
         }
-        // Reset timer
+        // Advancing send base
         if (ack.ackno == send_base) {
             while (send_base < packets.size() + 1 && acks.count(send_base))
                 send_base++;
@@ -128,33 +105,43 @@ void SelectiveRepeat::watch_timer() {
     while (num_of_acks < packets.size()) {
         for (int seqno = send_base; seqno < send_base + window_size &&
              seqno < packets.size() + 1; seqno++) {
-                timer_monitor(seqno, false);
+                timer_monitor(seqno, CHECK_TIMER);
         }
     }
 }
 
 void SelectiveRepeat::set_timer(u_int32_t seqno) {
-//    printf("Setting timer of: %d\n", seqno);
     timers[seqno] = chrono::high_resolution_clock::now();
 }
 
 void SelectiveRepeat::check_timeout(u_int32_t seqno) {
     if (timers.count(seqno)) {
-        auto elapsed_time = chrono::duration_cast<std::chrono::milliseconds>(chrono::high_resolution_clock::now() - timers[seqno]).count();
+        auto elapsed_time = chrono::duration_cast<std::chrono::milliseconds>
+                (chrono::high_resolution_clock::now() - timers[seqno]).count();
         if (elapsed_time >= 300)
             handle_timeout(seqno);
     }
 }
 
-void SelectiveRepeat::timer_monitor(u_int32_t seqno, int action) {
+void SelectiveRepeat::remove_timer(u_int32_t seqno) {
+    if (timers.count(seqno))
+        timers.erase(seqno);
+}
+
+void SelectiveRepeat::timer_monitor(u_int32_t seqno, enum TIMER_ACTION action) {
     timer_mtx.lock();
-    if (action == 1) {
-        set_timer(seqno);
-    } else if (action == 2) {
-        if (timers.count(seqno))
-            timers.erase(seqno);
-    } else {
-        check_timeout(seqno);
+    switch (action) {
+        case SET_TIMER:
+            set_timer(seqno);
+            break;
+        case REMOVE_TIMER:
+            remove_timer(seqno);
+            break;
+        case CHECK_TIMER:
+            check_timeout(seqno);
+            break;
+        default:
+            break;
     }
     timer_mtx.unlock();
 }
@@ -197,5 +184,5 @@ void SelectiveRepeat::handle_fast_recovery(u_int32_t ackno) {
     int new_window_size = new_ssthresh + 3;
     update_congestion_attr(new_window_size, new_ssthresh, FAST_RECOVERY);
     send(*packets[ackno]);
-    timer_monitor(next_seqno, 1);
+    timer_monitor(next_seqno, SET_TIMER);
 }

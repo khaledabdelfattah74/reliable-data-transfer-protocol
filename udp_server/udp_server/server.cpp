@@ -60,5 +60,5 @@ void Server::initiate() {
             request_handler->handle();
         }
     }
-    printf("One of the clientس processed\n");
+    printf("One of the clients processed\n");
 }
