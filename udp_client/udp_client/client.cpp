@@ -40,10 +40,10 @@ void Client::initiate() {
         packet pckt;
         ssize_t len = ::recvfrom(this->socket_fd, &pckt, sizeof(pckt), MSG_WAITALL,
                    (struct sockaddr *) &server_addr, &addr_len);
-        printf("seqno: %d, fin: %d\n", pckt.seqno, pckt.fin);
-
-        if (len < 0)
+        if (len < 0 || !pckt.check())
             continue;
+
+        printf("seqno: %d, fin: %d\n", pckt.seqno, pckt.fin);
         
         ack_packet ack = *make_ack_packet(pckt.seqno);
         ::sendto(this->socket_fd, &ack, sizeof(ack), MSG_CONFIRM,
@@ -71,6 +71,8 @@ bool Client::send_request_packet() {
         ack_packet ack;
         ssize_t len = ::recvfrom(socket_fd, &ack, sizeof(ack), MSG_WAITALL,
                                  (struct sockaddr *) &server_addr, &addr_len);
+        if (!ack.check())
+            continue;
         printf("ackno: %d\n", ack.ackno);
         if (len > 0 && ack.ackno == 0)
             break;

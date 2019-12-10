@@ -46,7 +46,7 @@ void Server::initiate() {
         packet request;
         ssize_t len = ::recvfrom(this->socket_fd, &request, sizeof(request), MSG_WAITALL,
                    (struct sockaddr *) &client_addr, &client_len);
-        if (len < 0)
+        if (len < 0 || !request.check())
             continue;
         printf("Client msg: %s, length: %zd\n", request.data, len);
         ack_packet ack = *make_ack_packet(0);

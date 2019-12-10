@@ -31,7 +31,35 @@ typedef struct packet {
         this->seqno = seqno;
         this->len = len;
         this->fin = fin;
+        this->cksum = calculate_cksum();
     }
+    
+    u_int16_t calculate_cksum() {
+        u_int32_t sum = 0;
+        sum += len;
+        sum += seqno;
+        if (sum >> 16)
+            sum = (sum >> 16) + (sum & 0x0000FFFF);
+        auto* ptr = (u_int16_t*) data;
+        for (int i = 0; i < len; i += 2) {
+            sum += *ptr;
+            if (sum >> 16)
+                sum = (sum >> 16) + (sum & 0x0000FFFF);
+            ptr++;
+        }
+        if (len & 1) {
+            sum += *(((u_int8_t*) ptr) + 1);
+            if (sum >> 16)
+                sum = (sum >> 16) + (sum & 0x0000FFFF);
+        }
+            
+        return (~((u_int16_t) sum));
+    }
+    
+    bool check() {
+        return this->cksum == calculate_cksum();
+    }
+    
 } packet;
 
 typedef struct ack_packet {
@@ -45,7 +73,22 @@ typedef struct ack_packet {
     ack_packet(int ackno, int len) {
         this->ackno = ackno;
         this->len = len;
+        this->cksum = calculate_cksum();
     }
+    
+    u_int16_t calculate_cksum() {
+        u_int32_t sum = 0;
+        sum += len;
+        sum += ackno;
+        if (sum >> 16)
+            sum = (sum >> 16) + (sum & 0x0000FFFF);
+        return (~((u_int16_t) sum));
+    }
+    
+    bool check() {
+        return this->cksum == calculate_cksum();
+    }
+    
 } ack_packet;
 
 packet* make_packet(char[], int, int, bool fin=false);

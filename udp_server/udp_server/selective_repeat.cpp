@@ -75,7 +75,7 @@ void SelectiveRepeat::receive() {
         ack_packet ack;
         ssize_t len = ::recvfrom(socket_fd, &ack, sizeof(ack), MSG_WAITALL,
                                  (struct sockaddr *) &client_addr, &client_len);
-        if (len < 0)
+        if (len < 0 || !ack.check())
             continue;
         printf("Recived ackno: %d\n", ack.ackno);
         // Erase timer for packet with ackno = ack.ackno

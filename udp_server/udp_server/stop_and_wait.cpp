@@ -27,7 +27,7 @@ void StopAndWait::process() {
             ssize_t len = ::recvfrom(this->socket_fd, &ack, sizeof(ack), MSG_WAITALL,
                                      (struct sockaddr *) &client_addr, &client_len);
             printf("ackno: %d\n", ack.ackno);
-            if (len > 0 && ack.ackno == excpected_ackno)
+            if (len > 0 && ack.check() && ack.ackno == excpected_ackno)
                 break;
         }
     }
