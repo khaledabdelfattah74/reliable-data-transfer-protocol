@@ -56,7 +56,7 @@ void Server::initiate() {
         
         pid = fork();
         if (pid == 0) {
-            RequestHandler* request_handler = new RequestHandler(request, client_addr, seed, plp);
+            RequestHandler* request_handler = new RequestHandler(request, client_addr, seed, plp, ++next_chld_port_num);
             request_handler->handle();
         }
     }

@@ -60,7 +60,7 @@ void SelectiveRepeat::process() {
             else {
                 printf("#### Packet loss: %d\n", next_seqno);
             }
-            timer_monitor(next_seqno, SET_TIMER);
+            access_timers(next_seqno, SET_TIMER);
             next_seqno++;
         }
     }
@@ -79,12 +79,9 @@ void SelectiveRepeat::receive() {
             continue;
         printf("Recived ackno: %d\n", ack.ackno);
         // Erase timer for packet with ackno = ack.ackno
-        timer_monitor(ack.ackno, REMOVE_TIMER);
         // New Ack
         if (!acks.count(ack.ackno)) {
-            acks[ack.ackno] = 1;
-            num_of_acks++;
-            update_window_size();
+            handle_new_ack(ack.ackno);
         } else {
         // Fast retransmit
             acks[ack.ackno]++;
@@ -105,7 +102,7 @@ void SelectiveRepeat::watch_timer() {
     while (num_of_acks < packets.size()) {
         for (int seqno = send_base; seqno < send_base + window_size &&
              seqno < packets.size() + 1; seqno++) {
-                timer_monitor(seqno, CHECK_TIMER);
+                access_timers(seqno, CHECK_TIMER);
         }
     }
 }
@@ -128,7 +125,7 @@ void SelectiveRepeat::remove_timer(u_int32_t seqno) {
         timers.erase(seqno);
 }
 
-void SelectiveRepeat::timer_monitor(u_int32_t seqno, enum TIMER_ACTION action) {
+void SelectiveRepeat::access_timers(u_int32_t seqno, enum TIMER_ACTION action) {
     timer_mtx.lock();
     switch (action) {
         case SET_TIMER:
@@ -156,7 +153,12 @@ void SelectiveRepeat::handle_timeout(u_int32_t seqno) {
     set_timer(seqno);
 }
 
-void SelectiveRepeat::update_window_size() {
+void SelectiveRepeat::handle_new_ack(u_int32_t ackno) {
+    // Assign new ack
+    acks[ackno] = 1;
+    num_of_acks++;
+    access_timers(ackno, REMOVE_TIMER);
+    // Update congestion window
     enum STATE new_state = state;
     int new_window_size = window_size;
     switch (state) {
@@ -184,5 +186,5 @@ void SelectiveRepeat::handle_fast_recovery(u_int32_t ackno) {
     int new_window_size = new_ssthresh + 3;
     update_congestion_attr(new_window_size, new_ssthresh, FAST_RECOVERY);
     send(*packets[ackno]);
-    timer_monitor(next_seqno, SET_TIMER);
+    access_timers(next_seqno, SET_TIMER);
 }

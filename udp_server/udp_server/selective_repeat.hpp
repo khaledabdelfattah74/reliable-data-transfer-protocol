@@ -67,9 +67,9 @@ private:
     void set_timer(u_int32_t);
     void check_timeout(u_int32_t);
     void remove_timer(u_int32_t);
-    void timer_monitor(u_int32_t, enum TIMER_ACTION);
+    void access_timers(u_int32_t, enum TIMER_ACTION);
     void handle_timeout(u_int32_t);
-    void update_window_size();
+    void handle_new_ack(u_int32_t);
     void handle_fast_recovery(u_int32_t);
     void update_congestion_attr(int, int, enum STATE);
     

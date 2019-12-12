@@ -27,6 +27,7 @@ using namespace std;
 
 class RequestHandler {
 private:
+    int port_num;
     int req_sock_fd;
     packet request;
     sockaddr_in client_addr;
@@ -35,7 +36,7 @@ private:
     double plp;
     
 public:
-    RequestHandler(packet, sockaddr_in, double, double);
+    RequestHandler(packet, sockaddr_in, double, double, int);
     void handle(enum PROTOCOL protocol=SELECTIVE_REPEAT);
 };
 

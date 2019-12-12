@@ -31,6 +31,7 @@ private:
     double plp;
     enum PROTOCOL protocol;
     char buffer[BUFFER_SIZE];
+    int next_chld_port_num=PORT;
     
 public:
     Server(int port_num=PORT, double seed=12312, double plp=0.1, enum PROTOCOL protocol=STOP_AND_WAIT);

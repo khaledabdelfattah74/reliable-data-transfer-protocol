@@ -8,11 +8,12 @@
 
 #include "request_handler.hpp"
 
-RequestHandler::RequestHandler(packet request, sockaddr_in client_addr, double seed, double plp) {
+RequestHandler::RequestHandler(packet request, sockaddr_in client_addr, double seed, double plp, int port_num) {
     this->request = request;
     this->client_addr = client_addr;
     this->seed = seed;
     this->plp = plp;
+    this->port_num = port_num;
 }
 
 void RequestHandler::handle(enum PROTOCOL protocol) {
@@ -23,7 +24,7 @@ void RequestHandler::handle(enum PROTOCOL protocol) {
     }
     
     req_addr = {};
-    req_addr.sin_port = 0;
+    req_addr.sin_port = port_num;
     req_addr.sin_family = AF_INET;
     req_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     
